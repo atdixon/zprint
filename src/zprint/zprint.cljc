@@ -1796,6 +1796,38 @@
 
 (declare precede-w-nl)
 
+(defn- ->self-indent+
+  [{:keys [fn-style fn-map user-fn-map] :as options} zloc]
+  (when (zlist? zloc)
+    ;; note: inspired by similar logic in fzprint-list*
+   (let [arg-1-zloc (zfirst zloc)
+         arg-1-coll? (not (or (zkeyword? arg-1-zloc) (zsymbol? arg-1-zloc)))
+         fn-str (if-not arg-1-coll? (zstring arg-1-zloc))
+         fn-style (or fn-style (fn-map fn-str) (user-fn-map fn-str))
+         fn-style (if (and (not fn-style) fn-str)
+                    (fn-map (last (clojure.string/split fn-str #"/")))
+                    fn-style)
+         fn-style (if (= fn-style :none) nil fn-style)
+         fn-style (if (and fn-str (nil? fn-style)) (:default fn-map) fn-style)
+         options (if (vector? fn-style)
+                   (first (zprint.config/config-and-validate
+                            "fn-style:"
+                            nil
+                            options
+                            (if (= (count fn-style) 2)
+                              ; only one option map
+                              (second fn-style)
+                              (if (= :zipper (:ztype options))
+                                (second fn-style)
+                                (nth fn-style 2)))))
+                   options)
+         self-indent+ (:self-indent+ options)]
+     (dbg-pr options "->self-indent+"
+       "fn-str:" fn-str
+       "fn-style:" fn-style
+       "self-indent+:" self-indent+)
+     self-indent+)))
+
 (defn fzprint-flow-seq
   "Takes zloc-seq, a seq of a zloc, created by (zmap identity zloc),
   and returns a style-vec of the result.  Either it fits on one
@@ -1815,7 +1847,9 @@
            "fzprint-flow-seq: count zloc-seq:" (count zloc-seq)
            "nl-first?" nl-first?
            "zloc-seq:" (map zstring zloc-seq))
-   (let [coll-print (fzprint-seq options ind zloc-seq)
+   (let [self-ind+ (zpmap options (comp #(or % 0)
+                                    (partial ->self-indent+ options)) zloc-seq)
+         coll-print (fzprint-seq options ind zloc-seq)
          ; If we are force-nl?, then don't bother trying one-line
          one-line (apply concat-no-nil
                     (interpose [[" " :none :whitespace 8]] coll-print))
@@ -1828,7 +1862,7 @@
                  one-line
                  (if (not (empty? coll-print))
                    (apply concat-no-nil
-                     (precede-w-nl options ind coll-print (not nl-first?)))
+                     (precede-w-nl options ind self-ind+ coll-print (not nl-first?)))
                    :noseq)))))
   ([options ind zloc-seq] (fzprint-flow-seq options ind zloc-seq nil nil))
   ([options ind zloc-seq force-nl?]
@@ -4259,7 +4293,7 @@
                     (concat-no-nil
                       l-str-vec
                       (apply concat-no-nil
-                        (precede-w-nl options new-ind coll-print :no-nl-first))
+                        (precede-w-nl options new-ind 0 coll-print :no-nl-first))
                       r-str-vec)
                     ; Since there are either no collections in this vector or
                     ; set
@@ -4315,12 +4349,13 @@
   Comments are now not recognized as different, increasing our
   appreciation of diversity.  If not-first? is truthy, then don't
   put a newline before the first element."
-  [options ind coll not-first?]
+  [options ind self-ind+ coll not-first?]
   (dbg-pr options
           "precede-w-nl: (count coll)" (count coll)
           "not-first?" not-first?)
   (loop [coll coll
          ind-seq (if (coll? ind) ind (vector ind))
+         self-ind+-seq (if (coll? self-ind+) self-ind+ (vector self-ind+))
          out (transient [])
          added-nl? not-first?]
     (if (empty? coll)
@@ -4344,6 +4379,7 @@
             ; fzprint-newline, to the best of my knowledge, and that is
             ; how it works.
             indent (first ind-seq)
+            self-indent+ (first self-ind+-seq)
             newline? (= what :newline)
             ; Let's make sure about the last
             last-what (nth (last element) 2)]
@@ -4354,6 +4390,9 @@
                (if-let [next-ind (next ind-seq)]
                  next-ind
                  ind-seq)
+               (if-let [next-self-ind+ (next self-ind+-seq)]
+                 next-self-ind+
+                 self-ind+-seq)
                (if newline?
                  ; It is a :newline, so just use it as it is.
                  ; Except if the next thing out is also a newline, we'll have
@@ -4366,7 +4405,10 @@
                          ; don't put out a newline with spaces before another
                          ; newline
                          (conj! out [["\n" color what]])
-                         (conj! out element)))))
+                         (let [next-self-ind+ (or (fnext self-ind+-seq) (first self-ind+-seq))
+                               s' (str "\n" (blanks (max 0 (+ indent next-self-ind+))))
+                               element' (assoc-in element [0 0] s')]
+                           (conj! out element'))))))
                  ; It is not a :newline, so we want to make sure we have a
                  ; newline in front of it, unless we already have one..
                  (if added-nl?
@@ -4374,7 +4416,7 @@
                    (conj! out element)
                    ; We need both a newline and the element
                    (conj-it! out
-                             [[(str "\n" (blanks indent)) :none :indent 28]]
+                             [[(str "\n" (blanks (max 0 (+ indent self-indent+)))) :none :indent 28]]
                              element)))
                ; Is there a newline as the last thing we just did?
                ; Two ways for that to happen.

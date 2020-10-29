@@ -336,6 +336,7 @@
 (s/def ::next-inner (s/nilable ::options))
 (s/def ::return-cvec? ::boolean)
 (s/def ::script (only-keys :opt-un [::more-options]))
+(s/def ::self-indent+ number?)
 (s/def ::set
   (only-keys :opt-un [::indent ::indent-only? ::respect-bl? ::respect-nl?
                       ::sort? ::sort-in-code? ::wrap-after-multi? ::wrap-coll?
@@ -376,7 +377,7 @@
              ::object ::old? ::output ::pair ::pair-fn ::parallel? ::parse
              ::parse-string-all? ::parse-string? ::perf-vs-format
              ::process-bang-zprint? ::promise ::reader-cond ::record ::remove
-             ::next-inner ::return-cvec? ::search-config? ::set ::spaces?
+             ::next-inner ::return-cvec? ::search-config? ::self-indent+ ::set ::spaces?
              ::script ::spec ::style ::style-map ::tab ::test-for-eol-blanks?
              ::trim-comments? ::tuning :alt/uneval ::user-fn-map ::vector
              ::vector-fn ::version ::width ::url ::zipper?]))
