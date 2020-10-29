@@ -1,5 +1,6 @@
 (ns ^:no-doc zprint.main
   (:require ;[clojure.string :as str]
+   [clojure.stacktrace]
     [zprint.core :refer
      [zprint-str czprint zprint-file-str set-options! load-options!]]
     [zprint.config :refer

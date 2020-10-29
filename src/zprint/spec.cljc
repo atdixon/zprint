@@ -336,8 +336,10 @@
   (only-keys :opt-un [::fn-force-nl ::fn-gt2-force-nl ::fn-gt3-force-nl
                       :alt/extend]))
 (s/def ::next-inner (s/nilable ::options))
+(s/def ::rama-mode? (s/nilable ::boolean))
 (s/def ::return-cvec? ::boolean)
 (s/def ::script (only-keys :opt-un [::more-options]))
+(s/def ::self-indent+ number?)
 (s/def ::set
   (only-keys :opt-un [::indent ::indent-only? ::respect-bl? ::respect-nl?
                       ::sort? ::sort-in-code? ::wrap-after-multi? ::wrap-coll?
@@ -382,7 +384,9 @@
        ::next-inner ::return-cvec? ::search-config? ::set ::spaces? ::script
        ::spec ::style ::styles-applied ::style-map ::tab ::test-for-eol-blanks?
        ::trim-comments? ::tuning :alt/uneval ::user-fn-map ::vector ::vector-fn
-       ::version ::width ::url ::zipper?]))
+       ::version ::width ::url ::zipper?
+       ::self-indent+
+       ]))
 
 (defn numbers-or-number-pred?
   "If they are both numbers and are equal, or the first is a number 
