@@ -538,6 +538,15 @@
       (let [xloc (right* nloc)]
         (recur xloc (if (whitespace? xloc) index (inc index)))))))
 
+(defn zdrop*
+  [n zloc]
+  (first
+    (drop n
+      (iterate
+        (fn [iloc]
+          (if-let [d' (down* iloc)]
+            (zremove d') iloc)) zloc))))
+
 (defn zcount-zloc-seq-nc-nws
   "How many non-whitespace non-comment children are in zloc-seq? Note
   that this is fundamentally different from zcount, in that it doesn't
