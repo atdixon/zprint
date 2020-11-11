@@ -5260,15 +5260,17 @@
         nil
       (zrecord? zloc) (fzprint-record options indent zloc)
       (zlist? zloc) (let [;; todo make split sym configurable
-                          split-index (zfind #(= ':> (z/sexpr %)) zloc)]
+                          split-index (zfind #(and
+                                                (satisfies? rewrite-clj.node.protocols/Node %)
+                                                (= ":>" (zstring %))) zloc)]
                       (if split-index
                         (let [lhs (fzprint-list options indent
-                                    (ztake-append split-index zloc ':>))
+                                    (zprint.zutil/ztake* split-index zloc))
                               rhs (fzprint-seq options indent
                                     (zmap identity
                                       (zprint.zutil/zdrop* (inc split-index) zloc)))
                               rhs' (apply concat-no-nil
-                                     [[" " :none :whitespace 8]]
+                                     (when-not (empty? rhs) [[" " :none :whitespace 8]])
                                      (interpose [[" " :none :whitespace 8]] rhs))]
                           (vec (concat (butlast lhs) rhs' [(last lhs)])))
                         (fzprint-list options indent zloc)))

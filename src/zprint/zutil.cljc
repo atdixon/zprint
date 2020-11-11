@@ -538,6 +538,15 @@
       (let [xloc (right* nloc)]
         (recur xloc (if (whitespace? xloc) index (inc index)))))))
 
+(defn ztake*
+  [n zloc]
+  (loop [nloc (down* zloc)
+         index 0]
+    (if (>= index n)
+      (up* (zremove-right nloc))
+      (let [xloc (right* nloc)]
+        (recur xloc (if (whitespace? xloc) index (inc index)))))))
+
 (defn zdrop*
   [n zloc]
   (first
