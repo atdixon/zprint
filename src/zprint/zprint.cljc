@@ -5260,6 +5260,7 @@
         nil
       (zrecord? zloc) (fzprint-record options indent zloc)
       (zlist? zloc) (let [;; todo make split sym configurable
+                          ;; todo more specialized handling of multi-line and emission (vs capture)
                           split-index (zfind #(and
                                                 (satisfies? rewrite-clj.node.protocols/Node %)
                                                 (= ":>" (zstring %))) zloc)]
