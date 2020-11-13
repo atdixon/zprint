@@ -5264,7 +5264,7 @@
                           split-index (zfind #(and
                                                 (satisfies? rewrite-clj.node.protocols/Node %)
                                                 (= ":>" (zstring %))) zloc)]
-                      (if split-index
+                      (if (and split-index (> split-index 0))
                         (let [lhs (fzprint-list options indent
                                     (zprint.zutil/ztake* split-index zloc))
                               rhs (fzprint-seq options indent
