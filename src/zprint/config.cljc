@@ -22,7 +22,7 @@
 ;;
 
 
-(defn about "Return version of this program." [] (str "zprint-1.0.2-self-indent-fork-0"))
+(defn about "Return version of this program." [] (str "zprint-1.0.2-self-indent-fork-1"))
 
 ;;
 ;; # External Configuration

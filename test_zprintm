@@ -3,7 +3,7 @@ diff z.cljc src/zprint/zprint.cljc
 rm z.cljc
 java -jar target/zprint-filter-1.0.2 -e 2>uj.edn
 grep -v "\<Fn\@" <uj.edn >ujx.edn
-./zprintm-1.0.2-self-indent-fork-0 -e 2>gv.edn
+./zprintm-1.0.2-self-indent-fork-1 -e 2>gv.edn
 grep -v "\<Fn\@" <gv.edn >gvx.edn
 diff ujx.edn gvx.edn
 rm uj.edn ujx.edn gv.edn gvx.edn
