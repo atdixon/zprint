@@ -19,6 +19,7 @@
     [zprint.ansi :refer [color-str]]
     [zprint.config :refer [validate-options merge-deep]]
     [zprint.zutil :refer [add-spec-to-docstring]]
+    [rewrite-clj.node :as n]
     [rewrite-clj.parser :as p]
     [rewrite-clj.zip :as z]
     #_[taoensso.tufte :as tufte :refer (p defnp profiled profile)]))
@@ -5187,6 +5188,93 @@
 
 (declare inlinecomment?)
 
+;; -- BEGIN custom emitter handling --
+
+(def ^:private ^:const emitter-regex #":[^:>\s]*>")
+
+(defn- emitter-str?
+  [s]
+  (some? (re-matches emitter-regex s)))
+
+(defn- find-emitter**
+  [zloc from]
+  (zprint.zutil/zfind-skip-n-nws**
+    #(and
+       (satisfies? rewrite-clj.node.protocols/Node %)
+       (emitter-str? (zstring %))) zloc from))
+
+(defn- skip-factor-emitters?
+  [list-zloc]
+  (or
+    (not
+      (zprint.zutil/zfind-skip-n-nws**
+        (comp emitter-str? zstring) list-zloc 1))
+    (some?
+      (zfind
+        #(and (zlist? %)
+           (->> % z/down zstring emitter-str?)) list-zloc))))
+
+(defn- list-factor**
+  [zloc]
+  (n/list-node
+    (rewrite-clj.custom-zipper.core/children zloc)))
+
+(defn- factor-emitters*
+  [list-zloc]
+  (let [[factored to-factor] (if-let [[idx] (find-emitter** list-zloc 1)]
+                               [(zprint.zutil/ztake** idx list-zloc)
+                                (zprint.zutil/zdrop** idx list-zloc)]
+                               [list-zloc []])
+        factors (loop [tail to-factor acc []]
+                  (if-let [[idx prev-nws] (find-emitter** tail 1)]
+                    (recur
+                      (zprint.zutil/zdrop** idx tail)
+                      (-> acc
+                        (conj
+                          (->> tail
+                            (zprint.zutil/ztake** (inc prev-nws))
+                            list-factor**))
+                        (into
+                          (->> tail
+                            (zprint.zutil/zdrop** (inc prev-nws))
+                            (zprint.zutil/ztake** (- idx prev-nws 1))
+                            rewrite-clj.custom-zipper.core/children))))
+                    (conj acc (list-factor** tail))))]
+    (reduce
+      rewrite-clj.custom-zipper.core/append-child factored factors)))
+
+(defn- unfactor-adjust**
+  [adjust? [sv :as s]]
+  (if adjust?
+    (assoc s
+      0
+      (.replaceAll ^String sv "^([\\n\\r]+ +) (.*)$" "$1$2"))
+    s))
+
+(defn- unfactor-emitters*
+  [style-vec]
+  (loop [{:keys [depth in-emitter?] :as state} {:depth 0 :in-emitter? false}
+         [[ss1 :as s1] [ss2 :as s2] & more] style-vec
+         res []]
+    (cond
+      (nil? s2)
+      (conj res s1)
+
+      (= ss1 "(")
+      (if (and (= 1 depth) (emitter-str? ss2))
+        (recur {:depth (inc depth) :in-emitter? true} more (conj res s2))
+        (recur (update state :depth inc) (cons s2 more) (conj res s1)))
+
+      (= ss1 ")")
+      (if (and (= 1 (dec depth)) in-emitter?)
+        (recur {:depth (dec depth) :in-emitter? false} (cons s2 more) res)
+        (recur (update state :depth dec) (cons s2 more) (conj res s1)))
+
+      :else
+      (recur state (cons s2 more) (conj res (unfactor-adjust** in-emitter? s1))))))
+
+;; -- END custom emitter handling --
+
 ;; Fix fzprint* to look at cursor to see if there is one, and
 ;; fzprint to set cursor with binding.  If this works, might pass
 ;; it around.  Maybe pass ctx to everyone and they can look at it
@@ -5259,22 +5347,13 @@
                     (> depth max-hang-depth))))
         nil
       (zrecord? zloc) (fzprint-record options indent zloc)
-      (zlist? zloc) (let [;; todo make split sym configurable
-                          ;; todo more specialized handling of multi-line and emission (vs capture)
-                          split-index (zfind #(and
-                                                (satisfies? rewrite-clj.node.protocols/Node %)
-                                                (= ":>" (zstring %))) zloc)]
-                      (if (and split-index (> split-index 0))
-                        (let [lhs (fzprint-list options indent
-                                    (zprint.zutil/ztake* split-index zloc))
-                              rhs (fzprint-seq options indent
-                                    (zmap identity
-                                      (zprint.zutil/zdrop* (inc split-index) zloc)))
-                              rhs' (apply concat-no-nil
-                                     (when-not (empty? rhs) [[" " :none :whitespace 8]])
-                                     (interpose [[" " :none :whitespace 8]] rhs))]
-                          (vec (concat (butlast lhs) rhs' [(last lhs)])))
-                        (fzprint-list options indent zloc)))
+      (zlist? zloc) (do
+                      (if (skip-factor-emitters? zloc)
+                        (fzprint-list options indent zloc)
+                        (->> zloc
+                          factor-emitters*
+                          (fzprint-list options indent)
+                          unfactor-emitters*)))
       (zvector? zloc) (fzprint-vec options indent zloc)
       (or (zmap? zloc) (znamespacedmap? zloc)) (fzprint-map options indent zloc)
       (zset? zloc) (fzprint-set options indent zloc)

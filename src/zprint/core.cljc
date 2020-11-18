@@ -25,6 +25,7 @@
     [zprint.range :refer
      [expand-range-to-top-level split-out-range reassemble-range]]
     [rewrite-clj.parser :as p]
+    [rewrite-clj.zip :as z]
     #_[clojure.spec.alpha :as s])
   #?@(:clj ((:import (java.net URL URLConnection)
                      (java.util.concurrent Executors)
@@ -942,6 +943,24 @@
   (let [len (count s)]
     (if (zero? len) nil (when (empty? (clojure.string/replace s " " "")) len))))
 
+(defn- confounding-form?
+  ;; note: could extend this to consult options for confounding
+  ;; patterns or syms
+  [_options form]
+  (let [z (z/of-string (string form))]
+    (some?
+      (rewrite-clj.zip/find-depth-first z
+        #(and
+           (do (println "%" %) true)
+           (satisfies? rewrite-clj.node.protocols/Node %)
+           (re-matches #":[^:>\s]*>" (z/string %)))))))
+
+(defn- allow-format-form?
+  [form]
+  (let [options (get-options)]
+    (or (not (:rama-mode? options)) ;; in rama mode we skip confounding forms
+      (not (confounding-form? options form)))))
+
 ;!zprint {:format :next :vector {:wrap? false}}
 
 (defn ^:no-doc process-form
@@ -1015,7 +1034,8 @@
                   (and (not (or comment? whitespace-form?))
                        ; used to be next-options but if not a comment then
                        ; they are in internal-options
-                       (= :skip (:format internal-options))))
+                       (= :skip (:format internal-options)))
+                  (not (allow-format-form? form)))
             (string form)
             ; call zprint-str-internal or an alternative if one exists
             (zprint-fn internal-options form))

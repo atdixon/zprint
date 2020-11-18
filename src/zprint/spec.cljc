@@ -334,6 +334,7 @@
   (only-keys :opt-un [::fn-force-nl ::fn-gt2-force-nl ::fn-gt3-force-nl
                       :alt/extend]))
 (s/def ::next-inner (s/nilable ::options))
+(s/def ::rama-mode? (s/nilable ::boolean))
 (s/def ::return-cvec? ::boolean)
 (s/def ::script (only-keys :opt-un [::more-options]))
 (s/def ::self-indent+ number?)
@@ -377,8 +378,8 @@
              ::object ::old? ::output ::pair ::pair-fn ::parallel? ::parse
              ::parse-string-all? ::parse-string? ::perf-vs-format
              ::process-bang-zprint? ::promise ::reader-cond ::record ::remove
-             ::next-inner ::return-cvec? ::search-config? ::self-indent+ ::set ::spaces?
-             ::script ::spec ::style ::style-map ::tab ::test-for-eol-blanks?
+             ::next-inner ::rama-mode? ::return-cvec? ::search-config? ::self-indent+
+             ::set ::spaces? ::script ::spec ::style ::style-map ::tab ::test-for-eol-blanks?
              ::trim-comments? ::tuning :alt/uneval ::user-fn-map ::vector
              ::vector-fn ::version ::width ::url ::zipper?]))
 

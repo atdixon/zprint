@@ -301,6 +301,20 @@
     (when (not (nil? nloc))
       (if (zthing? nloc) i (recur (zrightnws nloc) (inc i))))))
 
+(defn zfind-skip-n-nws**
+  [zthing? zloc n-nws]
+  (loop [nloc (down* zloc)
+         i 0
+         nws 0
+         last-nws -1]
+    (when (not (nil? nloc))
+      (if (and (>= nws n-nws) (zthing? nloc))
+        [i last-nws] (recur
+                       (right* nloc)
+                       (inc i)
+                       (if (whitespace? nloc) nws (inc nws))
+                       (if (whitespace? nloc) last-nws i))))))
+
 (defn znl [] "Return a zloc which is a newline." (edn* (p/parse-string "\n")))
 
 (defn multi-nl
@@ -538,23 +552,35 @@
       (let [xloc (right* nloc)]
         (recur xloc (if (whitespace? xloc) index (inc index)))))))
 
-(defn ztake*
+(defn zremove-right**
+  ;; https://stackoverflow.com/a/55352841/330176
+  [loc]
+  (let [parent-loc (up* loc)
+        |lefts| (inc (count (rewrite-clj.custom-zipper.core/lefts loc)))]
+    (->> (rewrite-clj.custom-zipper.core/make-node loc (rewrite-clj.custom-zipper.core/node parent-loc)
+           (take |lefts| (rewrite-clj.custom-zipper.core/children parent-loc)))
+      (z/replace* parent-loc)
+      down*
+      z/rightmost*)))
+
+(defn ztake**
   [n zloc]
   (loop [nloc (down* zloc)
-         index 0]
+         index 1]
     (if (>= index n)
-      (up* (zremove-right nloc))
-      (let [xloc (right* nloc)]
-        (recur xloc (if (whitespace? xloc) index (inc index)))))))
+      (up* (zremove-right** nloc))
+      (if-let [xloc (right* nloc)]
+        (recur xloc (inc index))
+        (up* nloc)))))
 
-(defn zdrop*
+(defn zdrop**
   [n zloc]
   (first
     (drop n
       (iterate
         (fn [iloc]
           (if-let [d' (down* iloc)]
-            (zremove d') iloc)) zloc))))
+            (z/remove* d') iloc)) zloc))))
 
 (defn zcount-zloc-seq-nc-nws
   "How many non-whitespace non-comment children are in zloc-seq? Note
