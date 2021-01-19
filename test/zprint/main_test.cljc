@@ -135,7 +135,7 @@
   ;; If the uberjar isn't found, don't fail, just output the message.
 
   (def uberjar
-    (join "-" (interpose "filter" (split (zprint.config/about) #"-"))))
+    (join "-" (interpose "filter" (split (zprint.config/about) #"-" 2))))
 
   (def target-uberjar (str "target/" uberjar))
 

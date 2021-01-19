@@ -5145,8 +5145,6 @@
              (concat [new-caller] key-seq)
              #(do % (get-in options (concat [existing-caller] key-seq)))))
 
-(declare inlinecomment?)
-
 ;; -- BEGIN custom emitter handling --
 
 (def ^:private ^:const emitter-regex #":[^:>\s]*>")
@@ -5166,6 +5164,7 @@
   [options list-zloc]
   (or
     (not (:factor-emitters? options))
+    (not (:factor-output-streams? options))
     (not
       (zprint.zutil/zfind-skip-n-nws**
         (comp emitter-str? zstring) list-zloc 1))

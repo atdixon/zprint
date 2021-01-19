@@ -336,7 +336,6 @@
   (only-keys :opt-un [::fn-force-nl ::fn-gt2-force-nl ::fn-gt3-force-nl
                       :alt/extend]))
 (s/def ::next-inner (s/nilable ::options))
-(s/def ::rama-mode? (s/nilable ::boolean))
 (s/def ::return-cvec? ::boolean)
 (s/def ::script (only-keys :opt-un [::more-options]))
 (s/def ::self-indent+ number?)
