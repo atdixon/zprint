@@ -338,7 +338,6 @@
 (s/def ::next-inner (s/nilable ::options))
 (s/def ::return-cvec? ::boolean)
 (s/def ::script (only-keys :opt-un [::more-options]))
-(s/def ::self-indent+ number?)
 (s/def ::set
   (only-keys :opt-un [::indent ::indent-only? ::respect-bl? ::respect-nl?
                       ::sort? ::sort-in-code? ::wrap-after-multi? ::wrap-coll?
@@ -364,6 +363,12 @@
 (s/def ::url (only-keys :opt-un [::cache-dir ::cache-path ::cache-secs]))
 (s/def ::zipper? ::boolean)
 
+;; vishnu-mode
+(s/def ::self-indent+ number?)
+(s/def ::factor-emitters? ::boolean) ;; deprecated; use ::factor-output-streams?
+(s/def ::factor-output-streams? ::boolean)
+(s/def ::skip-forms-with set?)
+
 ;;
 ;; # Top level options map
 ;;
@@ -384,7 +389,8 @@
        ::spec ::style ::styles-applied ::style-map ::tab ::test-for-eol-blanks?
        ::trim-comments? ::tuning :alt/uneval ::user-fn-map ::vector ::vector-fn
        ::version ::width ::url ::zipper?
-       ::self-indent+
+       ;; vishnu-mode
+       ::self-indent+ ::factor-emitters? ::factor-output-streams? ::skip-forms-with
        ]))
 
 (defn numbers-or-number-pred?

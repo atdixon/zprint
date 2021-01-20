@@ -1923,7 +1923,8 @@
     ;
     (if (or (fzfit-one-line options hr-lines) one-line?)
       hanging
-      (let [flow (prepend-nl options findent (fzprint* options findent zloc))
+      (let [self-indent+ (->self-indent+ options zloc)
+            flow (prepend-nl options (+ findent self-indent+) (fzprint* options findent zloc))
             _ (log-lines options "fzprint-hang-one: flow:" findent flow)
             fd-lines (style-lines options findent flow)
             _ (dbg options "fzprint-hang-one: fd-lines:" fd-lines)
