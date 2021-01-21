@@ -660,7 +660,8 @@
                 [format-status stdout-str format-stderr]
                   (try [0 (zprint-file-str in-str "<stdin>") nil]
                        (catch Exception e
-                         [1 in-str (str "Failed to zprint: " e)]))]
+                         [1 in-str (str "Failed to zprint: "
+                                     (with-out-str (clojure.stacktrace/print-stack-trace e)))]))]
             ;
             ; We used to do this: (spit *out* fmt-str) and it worked fine
             ; in the uberjar, presumably because the JVM eats any errors on
