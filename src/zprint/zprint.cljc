@@ -5179,12 +5179,7 @@
       (not (:factor-output-streams? options)))
     (not
       (zprint.zutil/zfind-skip-n-nws**
-        (comp emitter-str? zstring) list-zloc 1))
-    (some?
-      (zfind
-        #(and (zlist? %)
-           (or (->> % z/down zstring emitter-str?)
-             (->> % z/down zstring inline-hook-str?))) list-zloc))))
+        (comp emitter-str? zstring) list-zloc 1))))
 
 (defn- list-factor**
   [zloc]
