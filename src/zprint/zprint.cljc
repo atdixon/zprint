@@ -5154,6 +5154,10 @@
   [s]
   (some? (re-matches emitter-regex s)))
 
+(defn- inline-hook-str?
+  [s]
+  (= s ":>>"))
+
 (defn- find-emitter**
   [zloc from]
   (zprint.zutil/zfind-skip-n-nws**
@@ -5161,23 +5165,42 @@
        (satisfies? rewrite-clj.node.protocols/Node %)
        (emitter-str? (zstring %))) zloc from))
 
+(defn- find-inline-hook**
+  [zloc from]
+  (zprint.zutil/zfind-skip-n-nws**
+    #(and
+       (satisfies? rewrite-clj.node.protocols/Node %)
+       (inline-hook-str? (zstring %))) zloc from))
+
 (defn- skip-factor-emitters?
   [options list-zloc]
   (or
-    (not (:factor-emitters? options))
-    (not (:factor-output-streams? options))
+    (and (not (:factor-emitters? options))
+      (not (:factor-output-streams? options)))
     (not
       (zprint.zutil/zfind-skip-n-nws**
         (comp emitter-str? zstring) list-zloc 1))
     (some?
       (zfind
         #(and (zlist? %)
-           (->> % z/down zstring emitter-str?)) list-zloc))))
+           (or (->> % z/down zstring emitter-str?)
+             (->> % z/down zstring inline-hook-str?))) list-zloc))))
 
 (defn- list-factor**
   [zloc]
   (n/list-node
     (rewrite-clj.custom-zipper.core/children zloc)))
+
+(defn- factor-inline-hook*
+  [list-zloc]
+  (if-let [[idx] (find-inline-hook** list-zloc 1)]
+    (reduce
+      rewrite-clj.custom-zipper.core/append-child
+      (zprint.zutil/ztake** idx list-zloc)
+      [(->> list-zloc
+         (zprint.zutil/zdrop** idx)
+         list-factor**)])
+    list-zloc))
 
 (defn- factor-emitters*
   [list-zloc]
@@ -5193,13 +5216,15 @@
                         (conj
                           (->> tail
                             (zprint.zutil/ztake** (inc prev-nws))
+                            factor-inline-hook*
                             list-factor**))
+                        ;; whitespace before next emitter:
                         (into
                           (->> tail
                             (zprint.zutil/zdrop** (inc prev-nws))
                             (zprint.zutil/ztake** (- idx prev-nws 1))
                             rewrite-clj.custom-zipper.core/children))))
-                    (conj acc (list-factor** tail))))]
+                    (conj acc (list-factor** (factor-inline-hook* tail)))))]
     (reduce
       rewrite-clj.custom-zipper.core/append-child factored factors)))
 
@@ -5213,7 +5238,7 @@
 
 (defn- unfactor-emitters*
   [style-vec]
-  (loop [{:keys [depth in-emitter?] :as state} {:depth 0 :in-emitter? false}
+  (loop [{:keys [depth in-emitter? in-hook?] :as state} {:depth 0 :in-emitter? false :in-hook? false}
          [[ss1 :as s1] [ss2 :as s2] & more] style-vec
          res []]
     (cond
@@ -5221,13 +5246,21 @@
       (conj res s1)
 
       (= ss1 "(")
-      (if (and (= 1 depth) (emitter-str? ss2))
-        (recur {:depth (inc depth) :in-emitter? true} more (conj res s2))
-        (recur (update state :depth inc) (cons s2 more) (conj res s1)))
+      (cond
+        (and (= 1 depth) (emitter-str? ss2))
+        (recur (assoc state :depth (inc depth) :in-emitter? true) more (conj res s2))
+        (and (= 2 depth) in-emitter? (inline-hook-str? ss2))
+        (recur (assoc state :depth (inc depth) :in-hook? true) more (conj res s2))
+        :else
+        (recur (assoc state :depth (inc depth)) (cons s2 more) (conj res s1)))
 
       (= ss1 ")")
-      (if (and (= 1 (dec depth)) in-emitter?)
-        (recur {:depth (dec depth) :in-emitter? false} (cons s2 more) res)
+      (cond
+        (and (= 1 (dec depth)) in-emitter?)
+        (recur (assoc state :depth (dec depth) :in-emitter? false) (cons s2 more) res)
+        (and (= 2 (dec depth)) in-hook?)
+        (recur (assoc state :depth (dec depth) :in-hook? false) (cons s2 more) res)
+        :else
         (recur (update state :depth dec) (cons s2 more) (conj res s1)))
 
       :else
