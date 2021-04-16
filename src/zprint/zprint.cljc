@@ -5172,7 +5172,7 @@
        (satisfies? rewrite-clj.node.protocols/Node %)
        (inline-hook-str? (zstring %))) zloc from))
 
-(defn- skip-factor-emitters?
+(defn- skip-factor-output-streams?
   [options list-zloc]
   (or
     (and (not (:factor-emitters? options))
@@ -5202,7 +5202,7 @@
          list-factor**)])
     list-zloc))
 
-(defn- factor-emitters*
+(defn- factor-output-streams*
   [list-zloc]
   (let [[factored to-factor] (if-let [[idx] (find-emitter** list-zloc 1)]
                                [(zprint.zutil/ztake** idx list-zloc)
@@ -5236,7 +5236,7 @@
       (.replaceAll ^String sv "^([\\n\\r]+ +) (.*)$" "$1$2"))
     s))
 
-(defn- unfactor-emitters*
+(defn- unfactor-output-streams*
   [style-vec]
   (loop [{:keys [depth in-emitter? in-hook?] :as state} {:depth 0 :in-emitter? false :in-hook? false}
          [[ss1 :as s1] [ss2 :as s2] & more] style-vec
@@ -5340,12 +5340,12 @@
                     (> depth max-hang-depth))))
         nil
       (zrecord? zloc) (fzprint-record options indent zloc)
-      (zlist? zloc) (if (skip-factor-emitters? options zloc)
+      (zlist? zloc) (if (skip-factor-output-streams? options zloc)
                       (fzprint-list options indent zloc)
                       (->> zloc
-                        factor-emitters*
+                        factor-output-streams*
                         (fzprint-list options indent)
-                        unfactor-emitters*))
+                        unfactor-output-streams*))
       (zvector? zloc) (fzprint-vec options indent zloc)
       (or (zmap? zloc) (znamespacedmap? zloc)) (fzprint-map options indent zloc)
       (zset? zloc) (fzprint-set options indent zloc)

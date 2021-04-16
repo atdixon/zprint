@@ -1,4 +1,4 @@
-(defproject zprint "1.1.1-vishnu-mode-0"
+(defproject zprint "1.1.1-vishnu-mode-1"
   :description "Pretty print zippers and s-expressions"
   :url "https://github.com/kkinnear/zprint"
   :license {:name "MIT License",
